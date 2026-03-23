@@ -126,9 +126,9 @@ ${trimmedCsv}
       );
     }
 
-    if (e instanceof Error && e.message.includes("quota")) {
+    if (e instanceof Error && (e.message.includes("quota") || e.message.includes("RESOURCE_EXHAUSTED") || e.message.includes("429"))) {
       return NextResponse.json(
-        { error: "APIの利用制限に達しました。しばらく経ってから再試行してください" },
+        { error: "Gemini APIの利用制限に達しました。Google AI Studio（aistudio.google.com）でAPIキーの利用状況を確認するか、しばらく時間をおいてから再試行してください" },
         { status: 429 }
       );
     }
