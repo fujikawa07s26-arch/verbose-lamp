@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AnalysisResult } from "@/types";
 
-const client = new Anthropic();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 // ぴよログCSVの最大行数（トークン節約のため）
 const MAX_ROWS = 500;
@@ -86,23 +86,11 @@ ${trimmedCsv}
 - スコアは厳しくしすぎず、記録してくれていること自体を高く評価する
 - 必ずJSONのみを返す（前後の説明文は不要）`;
 
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    // テキストブロックを取得
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json(
-        { error: "AIからの応答が取得できませんでした" },
-        { status: 500 }
-      );
-    }
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const response = await model.generateContent(prompt);
+    const rawText = response.response.text().trim();
 
     // JSONを抽出してパース
-    const rawText = textBlock.text.trim();
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return NextResponse.json(
@@ -131,14 +119,14 @@ ${trimmedCsv}
   } catch (e) {
     console.error("Analysis error:", e);
 
-    if (e instanceof Anthropic.AuthenticationError) {
+    if (e instanceof Error && e.message.includes("API_KEY")) {
       return NextResponse.json(
-        { error: "APIキーが設定されていません。ANTHROPIC_API_KEYを設定してください" },
+        { error: "APIキーが設定されていません。GEMINI_API_KEYを設定してください" },
         { status: 500 }
       );
     }
 
-    if (e instanceof Anthropic.RateLimitError) {
+    if (e instanceof Error && e.message.includes("quota")) {
       return NextResponse.json(
         { error: "APIの利用制限に達しました。しばらく経ってから再試行してください" },
         { status: 429 }
