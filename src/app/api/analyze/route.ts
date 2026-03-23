@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AnalysisResult } from "@/types";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.GeminiAPIKey || "");
 
 // ぴよログCSVの最大行数（トークン節約のため）
 const MAX_ROWS = 500;
@@ -121,7 +121,7 @@ ${trimmedCsv}
 
     if (e instanceof Error && e.message.includes("API_KEY")) {
       return NextResponse.json(
-        { error: "APIキーが設定されていません。GEMINI_API_KEYを設定してください" },
+        { error: "APIキーが設定されていません。GeminiAPIKeyを設定してください" },
         { status: 500 }
       );
     }
