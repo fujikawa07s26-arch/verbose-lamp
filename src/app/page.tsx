@@ -291,10 +291,10 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
         </p>
       </div>
 
-      {/* ジミニーのコメント */}
+      {/* チミィーのコメント */}
       <div className="bg-gradient-to-br from-orange-100 to-yellow-50 rounded-2xl p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-orange-500 mb-3">
-          🦗 ジミニーからのコメント
+          🎩 チミィーからのコメント
         </h2>
         <p className="text-gray-700 leading-relaxed whitespace-pre-line">
           {result.comment}
@@ -339,7 +339,7 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
       {result.advice && (
         <div className="bg-blue-50 rounded-2xl p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-blue-500 mb-3">
-            🦗 ジミニーからの応援メッセージ
+            🎩 チミィーからの応援メッセージ
           </h2>
           <p className="text-sm text-gray-700 leading-relaxed">{result.advice}</p>
         </div>
