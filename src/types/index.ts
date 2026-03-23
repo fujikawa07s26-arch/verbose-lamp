@@ -3,11 +3,16 @@ export interface Stat {
   value: string;
 }
 
+export interface DetailItem {
+  category: string;
+  content: string;
+}
+
 export interface AnalysisResult {
   score: number;
   title: string;
   comment: string;
   stats: Stat[];
-  highlights: string[];
+  details: DetailItem[];
   advice?: string;
 }

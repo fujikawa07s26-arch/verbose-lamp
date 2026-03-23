@@ -291,10 +291,10 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
         </p>
       </div>
 
-      {/* AIコメント */}
+      {/* ジミニーのコメント */}
       <div className="bg-gradient-to-br from-orange-100 to-yellow-50 rounded-2xl p-6 shadow-sm">
         <h2 className="text-sm font-semibold text-orange-500 mb-3">
-          💬 AIからのコメント
+          🦗 ジミニーからのコメント
         </h2>
         <p className="text-gray-700 leading-relaxed whitespace-pre-line">
           {result.comment}
@@ -318,17 +318,17 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
         </div>
       </div>
 
-      {/* ハイライト */}
-      {result.highlights.length > 0 && (
+      {/* カテゴリ別分析 */}
+      {result.details && result.details.length > 0 && (
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-500 mb-4">
-            ✨ がんばりポイント
+            🔍 くわしい分析
           </h2>
-          <ul className="space-y-2">
-            {result.highlights.map((h, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                <span className="text-orange-400 mt-0.5">●</span>
-                {h}
+          <ul className="space-y-4">
+            {result.details.map((d, i) => (
+              <li key={i} className="border-b border-orange-100 pb-4 last:border-0 last:pb-0">
+                <p className="text-xs font-semibold text-orange-500 mb-1">{d.category}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{d.content}</p>
               </li>
             ))}
           </ul>
@@ -339,7 +339,7 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
       {result.advice && (
         <div className="bg-blue-50 rounded-2xl p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-blue-500 mb-3">
-            💡 ひとことアドバイス
+            🦗 ジミニーからの応援メッセージ
           </h2>
           <p className="text-sm text-gray-700 leading-relaxed">{result.advice}</p>
         </div>
