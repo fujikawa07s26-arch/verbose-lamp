@@ -18,6 +18,13 @@ function trimCsv(csv: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!process.env.GeminiAPIKey) {
+    return NextResponse.json(
+      { error: "APIキーが設定されていません。VercelのEnvironment VariablesにGeminiAPIKeyを設定してください" },
+      { status: 500 }
+    );
+  }
+
   try {
     const { csv } = await req.json();
 
