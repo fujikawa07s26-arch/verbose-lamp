@@ -3,8 +3,12 @@
 import { useState, useRef } from "react";
 import type { AnalysisResult } from "@/types";
 
+type InputMode = "file" | "paste";
+
 export default function Home() {
+  const [mode, setMode] = useState<InputMode>("file");
   const [file, setFile] = useState<File | null>(null);
+  const [pastedText, setPastedText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,18 +32,33 @@ export default function Home() {
     if (f) handleFile(f);
   };
 
+  const handleModeSwitch = (newMode: InputMode) => {
+    setMode(newMode);
+    setError(null);
+    setResult(null);
+  };
+
+  const canSubmit =
+    mode === "file" ? !!file : pastedText.trim().length >= 50;
+
   const handleSubmit = async () => {
-    if (!file) return;
+    if (!canSubmit) return;
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
-      const text = await file.text();
+      let csvText: string;
+      if (mode === "file") {
+        csvText = await file!.text();
+      } else {
+        csvText = pastedText.trim();
+      }
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csv: text }),
+        body: JSON.stringify({ csv: csvText }),
       });
 
       if (!res.ok) {
@@ -70,67 +89,123 @@ export default function Home() {
           </p>
         </div>
 
-        {/* アップロードエリア */}
-        <div
-          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer mb-6 ${
-            dragOver
-              ? "border-orange-400 bg-orange-100"
-              : file
-              ? "border-green-400 bg-green-50"
-              : "border-orange-300 bg-white hover:border-orange-400 hover:bg-orange-50"
-          }`}
-          onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFile(f);
+        {/* モード切替タブ */}
+        <div className="flex rounded-xl overflow-hidden border border-orange-200 mb-6">
+          <button
+            onClick={() => handleModeSwitch("file")}
+            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+              mode === "file"
+                ? "bg-orange-500 text-white"
+                : "bg-white text-orange-500 hover:bg-orange-50"
+            }`}
+          >
+            📁 CSVファイル
+          </button>
+          <button
+            onClick={() => handleModeSwitch("paste")}
+            className={`flex-1 py-3 text-sm font-semibold transition-colors ${
+              mode === "paste"
+                ? "bg-orange-500 text-white"
+                : "bg-white text-orange-500 hover:bg-orange-50"
+            }`}
+          >
+            📋 テキストを貼り付け
+          </button>
+        </div>
+
+        {/* ファイルアップロードエリア */}
+        {mode === "file" && (
+          <div
+            className={`border-2 border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer mb-6 ${
+              dragOver
+                ? "border-orange-400 bg-orange-100"
+                : file
+                ? "border-green-400 bg-green-50"
+                : "border-orange-300 bg-white hover:border-orange-400 hover:bg-orange-50"
+            }`}
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
             }}
-          />
-          {file ? (
-            <div>
-              <div className="text-4xl mb-2">📋</div>
-              <p className="font-semibold text-green-700">{file.name}</p>
-              <p className="text-sm text-green-500 mt-1">
-                {(file.size / 1024).toFixed(1)} KB
-              </p>
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+              }}
+            />
+            {file ? (
+              <div>
+                <div className="text-4xl mb-2">📋</div>
+                <p className="font-semibold text-green-700">{file.name}</p>
+                <p className="text-sm text-green-500 mt-1">
+                  {(file.size / 1024).toFixed(1)} KB
+                </p>
+                <button
+                  className="mt-3 text-xs text-gray-400 underline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFile(null);
+                    setResult(null);
+                    if (inputRef.current) inputRef.current.value = "";
+                  }}
+                >
+                  ファイルを変更
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div className="text-4xl mb-3">📁</div>
+                <p className="text-orange-700 font-medium">
+                  CSVファイルをここにドロップ
+                </p>
+                <p className="text-orange-400 text-sm mt-1">
+                  またはクリックして選択
+                </p>
+                <p className="text-gray-400 text-xs mt-3">
+                  ぴよログ → 設定 → バックアップ・引き継ぎ → CSVエクスポート
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* テキスト貼り付けエリア */}
+        {mode === "paste" && (
+          <div className="mb-6">
+            <textarea
+              value={pastedText}
+              onChange={(e) => {
+                setPastedText(e.target.value);
+                setResult(null);
+                setError(null);
+              }}
+              placeholder={`ぴよログのテキストをここに貼り付けてください。\n\n例:\n【ぴよログ】2026年2月\n\n----------\n2026/2/1(日)\nれお (9か月13日)\n\n09:20   起きる (12時間30分)\n...`}
+              className="w-full h-56 rounded-2xl border-2 border-orange-200 p-4 text-sm text-gray-700 resize-none focus:outline-none focus:border-orange-400 bg-white placeholder:text-gray-300"
+            />
+            <p className="text-xs text-gray-400 mt-2 ml-1">
+              ぴよログアプリの「共有」や「テキスト出力」からコピーしたテキストを貼り付けてください
+            </p>
+            {pastedText.trim().length > 0 && (
               <button
-                className="mt-3 text-xs text-gray-400 underline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setFile(null);
+                className="mt-2 text-xs text-gray-400 underline ml-1"
+                onClick={() => {
+                  setPastedText("");
                   setResult(null);
-                  if (inputRef.current) inputRef.current.value = "";
                 }}
               >
-                ファイルを変更
+                クリア
               </button>
-            </div>
-          ) : (
-            <div>
-              <div className="text-4xl mb-3">📁</div>
-              <p className="text-orange-700 font-medium">
-                CSVファイルをここにドロップ
-              </p>
-              <p className="text-orange-400 text-sm mt-1">
-                またはクリックして選択
-              </p>
-              <p className="text-gray-400 text-xs mt-3">
-                ぴよログ → 設定 → バックアップ・引き継ぎ → CSVエクスポート
-              </p>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-red-600 text-sm">
@@ -141,9 +216,9 @@ export default function Home() {
         {/* 分析ボタン */}
         <button
           onClick={handleSubmit}
-          disabled={!file || loading}
+          disabled={!canSubmit || loading}
           className={`w-full py-4 rounded-2xl font-bold text-lg transition-all ${
-            !file || loading
+            !canSubmit || loading
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : "bg-orange-500 hover:bg-orange-600 text-white shadow-md hover:shadow-lg active:scale-95"
           }`}
