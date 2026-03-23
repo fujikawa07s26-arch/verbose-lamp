@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
 import type { AnalysisResult } from "@/types";
 
-const genAI = new GoogleGenerativeAI(process.env.GeminiAPIKey || "");
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
 
 // ぴよログCSVの最大行数（トークン節約のため）
 const MAX_ROWS = 500;
@@ -18,9 +18,9 @@ function trimCsv(csv: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.GeminiAPIKey) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { error: "APIキーが設定されていません。VercelのEnvironment VariablesにGeminiAPIKeyを設定してください" },
+      { error: "APIキーが設定されていません。VercelのEnvironment VariablesにANTHROPIC_API_KEYを設定してください" },
       { status: 500 }
     );
   }
@@ -93,9 +93,22 @@ ${trimmedCsv}
 - スコアは厳しくしすぎず、記録してくれていること自体を高く評価する
 - 必ずJSONのみを返す（前後の説明文は不要）`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const response = await model.generateContent(prompt);
-    const rawText = response.response.text().trim();
+    const stream = client.messages.stream({
+      model: "claude-opus-4-6",
+      max_tokens: 64000,
+      thinking: { type: "adaptive" },
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const response = await stream.finalMessage();
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") {
+      return NextResponse.json(
+        { error: "AIの応答が空でした" },
+        { status: 500 }
+      );
+    }
+    const rawText = textBlock.text.trim();
 
     // JSONを抽出してパース
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -126,16 +139,16 @@ ${trimmedCsv}
   } catch (e) {
     console.error("Analysis error:", e);
 
-    if (e instanceof Error && e.message.includes("API_KEY")) {
+    if (e instanceof Anthropic.AuthenticationError) {
       return NextResponse.json(
-        { error: "APIキーが設定されていません。GeminiAPIKeyを設定してください" },
+        { error: "APIキーが無効です。ANTHROPIC_API_KEYを確認してください" },
         { status: 500 }
       );
     }
 
-    if (e instanceof Error && (e.message.includes("quota") || e.message.includes("RESOURCE_EXHAUSTED") || e.message.includes("429"))) {
+    if (e instanceof Anthropic.RateLimitError) {
       return NextResponse.json(
-        { error: "Gemini APIの利用制限に達しました。Google AI Studio（aistudio.google.com）でAPIキーの利用状況を確認するか、しばらく時間をおいてから再試行してください" },
+        { error: "APIの利用制限に達しました。しばらく時間をおいてから再試行してください" },
         { status: 429 }
       );
     }
