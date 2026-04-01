@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import type { AnalysisResult } from "@/types";
+import type { AnalysisResult, RhythmPattern, FussyZone, Prediction, PdcaItem } from "@/types";
 
 type InputMode = "file" | "paste";
 
@@ -85,7 +85,7 @@ export default function Home() {
             ぴよログ分析
           </h1>
           <p className="text-orange-600 text-sm">
-            育児ログをアップロードすると、AIがあなたの頑張りを評価してコメントします
+            育児ログをアップロードすると、AIがリズム・予測・改善提案までまとめてくれます
           </p>
         </div>
 
@@ -279,6 +279,111 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+function RhythmTimeline({ patterns }: { patterns: RhythmPattern[] }) {
+  return (
+    <div className="space-y-3">
+      {patterns.map((p, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <div className="w-16 text-right">
+            <span className="text-xs font-semibold text-orange-600">{p.avgTime}</span>
+          </div>
+          <div className="flex-shrink-0 w-3 h-3 rounded-full bg-orange-400 border-2 border-white shadow" />
+          <div className="flex-1 bg-orange-50 rounded-xl px-3 py-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-orange-800">{p.label}</span>
+              {p.durationAvg && (
+                <span className="text-xs text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full">
+                  {p.durationAvg}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-0.5">ばらつき {p.variance}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FussyZoneList({ zones }: { zones: FussyZone[] }) {
+  const levelColor = (level: FussyZone["level"]) => {
+    if (level === "高") return "bg-red-100 text-red-700 border-red-200";
+    if (level === "中") return "bg-yellow-100 text-yellow-700 border-yellow-200";
+    return "bg-green-100 text-green-700 border-green-200";
+  };
+
+  return (
+    <div className="space-y-2">
+      {zones.map((z, i) => (
+        <div key={i} className={`flex items-start gap-3 rounded-xl border p-3 ${levelColor(z.level)}`}>
+          <div className="mt-0.5 font-bold text-sm w-16 flex-shrink-0">{z.level}リスク</div>
+          <div>
+            <p className="font-semibold text-sm">{z.timeRange}</p>
+            <p className="text-xs mt-0.5 opacity-80">{z.reason}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PredictionCard({ prediction }: { prediction: Prediction }) {
+  const riskColor =
+    prediction.fussyRiskLevel === "高"
+      ? "text-red-600 bg-red-50 border-red-200"
+      : prediction.fussyRiskLevel === "中"
+      ? "text-yellow-600 bg-yellow-50 border-yellow-200"
+      : "text-green-600 bg-green-50 border-green-200";
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-blue-50 rounded-xl p-4 text-center">
+          <p className="text-xs text-blue-500 font-semibold mb-1">次の昼寝</p>
+          <p className="text-xl font-bold text-blue-700">{prediction.nextNapTime}</p>
+          <p className="text-xs text-blue-400 mt-1">{prediction.nextNapDuration}</p>
+        </div>
+        <div className={`rounded-xl p-4 text-center border ${riskColor}`}>
+          <p className="text-xs font-semibold mb-1">ぐずりリスク</p>
+          <p className="text-xl font-bold">{prediction.fussyRiskLevel}</p>
+          <p className="text-xs mt-1 opacity-80">{prediction.fussyRiskTime}</p>
+        </div>
+      </div>
+      <div className="bg-indigo-50 rounded-xl p-4">
+        <p className="text-xs font-semibold text-indigo-600 mb-1">今日のスケジュールアドバイス</p>
+        <p className="text-sm text-indigo-800 leading-relaxed">{prediction.scheduleAdvice}</p>
+      </div>
+    </div>
+  );
+}
+
+function PdcaList({ items }: { items: PdcaItem[] }) {
+  return (
+    <div className="space-y-4">
+      {items.map((item, i) => (
+        <div key={i} className="bg-white border border-green-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-start gap-2 mb-3">
+            <span className="flex-shrink-0 w-6 h-6 bg-green-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+              {i + 1}
+            </span>
+            <p className="text-sm font-semibold text-gray-700">{item.hypothesis}</p>
+          </div>
+          <div className="ml-8 space-y-2">
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-green-600 w-12 flex-shrink-0 mt-0.5">やること</span>
+              <p className="text-xs text-gray-600 leading-relaxed">{item.action}</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="text-xs font-bold text-blue-500 w-12 flex-shrink-0 mt-0.5">確認点</span>
+              <p className="text-xs text-gray-500 leading-relaxed">{item.checkPoint}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function AnalysisDisplay({ result }: { result: AnalysisResult }) {
   return (
     <div className="mt-8 space-y-5">
@@ -300,6 +405,36 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
           {result.comment}
         </p>
       </div>
+
+      {/* 今日の予測（最も実用的なセクション） */}
+      {result.prediction && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-500 mb-4">
+            🔮 今日の予測スケジュール
+          </h2>
+          <PredictionCard prediction={result.prediction} />
+        </div>
+      )}
+
+      {/* リズムパターン */}
+      {result.rhythmPatterns && result.rhythmPatterns.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-500 mb-4">
+            ⏰ 生活リズムのパターン
+          </h2>
+          <RhythmTimeline patterns={result.rhythmPatterns} />
+        </div>
+      )}
+
+      {/* ぐずりやすい時間帯 */}
+      {result.fussyZones && result.fussyZones.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-500 mb-4">
+            😢 ぐずりやすい時間帯
+          </h2>
+          <FussyZoneList zones={result.fussyZones} />
+        </div>
+      )}
 
       {/* まとめ統計 */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
@@ -332,6 +467,17 @@ function AnalysisDisplay({ result }: { result: AnalysisResult }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* 改善PDCA */}
+      {result.pdca && result.pdca.length > 0 && (
+        <div className="rounded-2xl p-6 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50">
+          <h2 className="text-sm font-semibold text-green-700 mb-1">
+            🔄 育児改善PDCA
+          </h2>
+          <p className="text-xs text-green-500 mb-4">試してみたい改善アイデア。やってみて、記録して、また分析！</p>
+          <PdcaList items={result.pdca} />
         </div>
       )}
 
